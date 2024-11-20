@@ -17,6 +17,7 @@ import org.json.simple.parser.ParseException;
 
 // Program for print data in JSON format.
 public class ReadJson {
+    static String instructions = "create a concise, sentence form summary of the weather based on this json data. this is going directly on the output of my app so include JUST the sentences and no sources, introductory text, etc. format it as sentences in a paragraph like a short description you might see on a website, not bulet points. aim to make it about 5 sentences. this is the json data:";
     private static final String accuWeatherApiKey = "plmQXK3tgourzPhezfyM9EeTmFbA3mCw";
     private static final String perplexityApiKey = "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";
     private static final String location = "boston";
@@ -42,7 +43,7 @@ public class ReadJson {
             String cityName = (String)city.get("EnglishName");
             System.out.println(cityKey+","+cityName);
 
-            JSONObject dailyForecasts = (JSONObject) parser.parse(openConnection("https://dataservice.accuweather.com/forecasts/v1/daily/1day/"+cityKey+"?apikey="+accuWeatherApiKey));
+            JSONObject dailyForecasts = (JSONObject) parser.parse(openConnection("https://dataservice.accuweather.com/forecasts/v1/daily/1day/"+cityKey+"?apikey="+accuWeatherApiKey+"&details=true"));
             String perplexityInput = dailyForecasts.toString();
             System.out.println(dailyForecasts);
             JSONObject headline = (JSONObject) dailyForecasts.get("Headline");
@@ -50,10 +51,16 @@ public class ReadJson {
             String description = (String) headline.get("Text");
             System.out.println("description:" + description);
 
+            //condition for image
+            String condition = (String) headline.get("Category");
+
             //temperature
             JSONArray forecasts = (JSONArray) dailyForecasts.get("DailyForecasts");
             JSONObject forecastInfo = (JSONObject) forecasts.get(0);
             JSONObject temperature = (JSONObject) forecastInfo.get("Temperature");
+
+
+
 
             //min and max temp
             JSONObject minimumTemp = (JSONObject) temperature.get("Minimum");
@@ -68,9 +75,25 @@ public class ReadJson {
             String dayCondition = (String) day.get("IconPhrase");
             System.out.println(dayCondition);
 
+            //wind
 
-            System.out.println(perplexity("create a concise summary of the weather based on this json data: " + perplexityInput));
+            JSONObject wind = (JSONObject)day.get("Wind");
+            System.out.println(day);
+            JSONObject speed = (JSONObject)wind.get("Speed");
+            Double windSpeedValue = (Double)speed.get("Value");
+            System.out.println(windSpeedValue);
 
+
+            JSONArray hourlyForecasts = (JSONArray) parser.parse(openConnection("https://dataservice.accuweather.com/forecasts/v1/hourly/1hour/"+cityKey+"?apikey="+accuWeatherApiKey));
+            JSONObject hourlyForecastsValue = (JSONObject)hourlyForecasts.get(0);
+            JSONObject currentTemp = (JSONObject)hourlyForecastsValue.get("Temperature");
+            Double tempValue = (Double)currentTemp.get("Value");
+            System.out.println(tempValue);
+
+            System.out.println(perplexity(instructions + perplexityInput));
+
+            String iconLink = "https://openweathermap.org/img/wn/"+ perplexity("based on the json data, find the condition that shows up as Category under the Headlines tab. then, go to https://openweathermap.org/weather-conditions and pick the icon code ie 01d for the icon that best fits this condition. your answer must contain NOTHING but the code, no side text. to clarify, your options are only the following:01d through 13d" + perplexityInput)+"@2x.png";
+            System.out.println(iconLink);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -111,6 +134,7 @@ public class ReadJson {
     public static String perplexity(String userInput) throws ParseException {
         JSONParser parser = new JSONParser();
         String totalJson = null;
+        String escapedSpecialCharacters = userInput.replace("\"", "\\\"").replace("\n", "\\n");
         try {
             String output;
             totalJson = "";
@@ -132,7 +156,7 @@ public class ReadJson {
                         "content": "%s"
                     }
                 ]
-            }""", userInput);
+            }""", escapedSpecialCharacters);
 
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonBody.getBytes("utf-8");
@@ -170,7 +194,7 @@ public class ReadJson {
         JSONObject data = (JSONObject)choices.get(0);
         JSONObject message = (JSONObject)data.get("message");
         String content = (String)message.get("content");
-        System.out.println(content);
+        //System.out.println(content);
 
         return content;
 
