@@ -16,18 +16,24 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 // Program for print data in JSON format.
+
 public class ReadJson {
     static String instructions = "create a concise, sentence form summary of the weather based on this json data. this is going directly on the output of my app so include JUST the sentences and no sources, introductory text, etc. format it as sentences in a paragraph like a short description you might see on a website, not bulet points. aim to make it about 5 sentences. this is the json data:";
     private static final String accuWeatherApiKey = "plmQXK3tgourzPhezfyM9EeTmFbA3mCw";
     private static final String perplexityApiKey = "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";
-    private static final String location = "boston";
-    public static void main(String args[]) throws ParseException {
+    private static final String location = SwingControlDemo.getLinkInput();
+    public static String iconLink;
+    public ReadJson() {
         // In java JSONObject is used to create JSON object
         // which is a subclass of java.util.HashMap.
 
         JSONObject file = new JSONObject();
 
-        pull();
+        try {
+            pull();
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
 
     }
 
@@ -36,12 +42,14 @@ public class ReadJson {
             JSONParser parser = new JSONParser();
             //System.out.println(str);
 
+            //get location key from the user search
             JSONArray cities = (JSONArray) parser.parse(openConnection("http://dataservice.accuweather.com/locations/v1/cities/search?apikey="+accuWeatherApiKey+"&q="+location));
             JSONObject city = (JSONObject) cities.get(0);
             System.out.println(city);
             String cityKey = (String)city.get("Key");
             String cityName = (String)city.get("EnglishName");
             System.out.println(cityKey+","+cityName);
+            SwingControlDemo.writeTo(SwingControlDemo.title, cityName);
 
             JSONObject dailyForecasts = (JSONObject) parser.parse(openConnection("https://dataservice.accuweather.com/forecasts/v1/daily/1day/"+cityKey+"?apikey="+accuWeatherApiKey+"&details=true"));
             String perplexityInput = dailyForecasts.toString();
@@ -66,9 +74,10 @@ public class ReadJson {
             JSONObject minimumTemp = (JSONObject) temperature.get("Minimum");
             Double minimumTempValue = (Double) minimumTemp.get("Value");
             JSONObject maximumTemp = (JSONObject) temperature.get("Maximum");
-            Double maximumTempValue = (Double) minimumTemp.get("Value");
+            Double maximumTempValue = (Double) maximumTemp.get("Value");
 
             System.out.println("High: "+maximumTempValue.intValue()+"F; Low: "+minimumTempValue.intValue()+"F");
+
 
             //conditions
             JSONObject day = (JSONObject) forecastInfo.get("Day");
@@ -83,6 +92,9 @@ public class ReadJson {
             Double windSpeedValue = (Double)speed.get("Value");
             System.out.println(windSpeedValue);
 
+            //output min temp, max temp, and wind
+            SwingControlDemo.writeTo(SwingControlDemo.info, "high temp: " + maximumTempValue.intValue() + "° \nlow temp: " + minimumTempValue.intValue() + "° \nwind: "+windSpeedValue.intValue()+" mph");
+
 
             JSONArray hourlyForecasts = (JSONArray) parser.parse(openConnection("https://dataservice.accuweather.com/forecasts/v1/hourly/1hour/"+cityKey+"?apikey="+accuWeatherApiKey));
             JSONObject hourlyForecastsValue = (JSONObject)hourlyForecasts.get(0);
@@ -90,10 +102,16 @@ public class ReadJson {
             Double tempValue = (Double)currentTemp.get("Value");
             System.out.println(tempValue);
 
-            System.out.println(perplexity(instructions + perplexityInput));
+            SwingControlDemo.writeTo(SwingControlDemo.temperature, tempValue.intValue() +"°");
 
-            String iconLink = "https://openweathermap.org/img/wn/"+ perplexity("based on the json data, find the condition that shows up as Category under the Headlines tab. then, go to https://openweathermap.org/weather-conditions and pick the icon code ie 01d for the icon that best fits this condition. your answer must contain NOTHING but the code, no side text. to clarify, your options are only the following:01d through 13d" + perplexityInput)+"@2x.png";
+            String perplexityDescription = perplexity(instructions + perplexityInput);
+            SwingControlDemo.writeTo(SwingControlDemo.output, perplexityDescription);
+
+            iconLink = "https://openweathermap.org/img/wn/"+ perplexity("based on the json data, find the condition that shows up as Category under the Headlines tab. if condition is sunny, return 01d. if partially cloudy, return 02d. if cloudy, return 03d. if rainy, return 10d. if snowing, return 13d. if the conidition doesn't fit any of those categories, just pick the one it most reasonably fits. your answer must contain NOTHING but what i told you to return (example of your output: 01d), no side text AT ALL.  TO REITERATE - YOUR ANSWER SHOULD BE NOTHING BUT THAT CODE - NO SOURCES, NO TEXT ON THE SIDE. " + perplexityInput)+"@2x.png";
             System.out.println(iconLink);
+
+
+
 
         } catch (Exception e) {
             e.printStackTrace();
